@@ -1,0 +1,131 @@
+name: Bug Report
+description: Report a bug with Vertexa Lightweight Browser
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please fill in the details below so we can investigate quickly.
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin Version
+      description: Check package.json or Package Manager
+      placeholder: "0.2.0"
+    validations:
+      required: true
+
+  - type: input
+    id: unity-version
+    attributes:
+      label: Unity Version
+      placeholder: "6000.3.3f1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      multiple: true
+      options:
+        - Windows
+        - Android
+        - iOS
+        - macOS
+        - Linux
+        - Unity Editor (Windows)
+        - Unity Editor (macOS)
+        - Unity Editor (Linux)
+    validations:
+      required: true
+
+  - type: input
+    id: os-version
+    attributes:
+      label: OS Version
+      description: e.g. Windows 11 23H2, Android 14 (Pixel 8), iOS 17.4, macOS 14.3
+      placeholder: "Windows 11 23H2"
+
+  - type: dropdown
+    id: scripting-backend
+    attributes:
+      label: Scripting Backend
+      options:
+        - IL2CPP
+        - Mono
+    validations:
+      required: true
+
+  - type: dropdown
+    id: render-pipeline
+    attributes:
+      label: Render Pipeline
+      options:
+        - Built-in (Standard)
+        - URP
+        - HDRP
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: What happened?
+      placeholder: Describe the bug clearly
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Minimal steps to trigger the bug
+      value: |
+        1. 
+        2. 
+        3. 
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happens?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console Logs
+      description: Paste any [LWB] prefixed errors from the Unity Console
+      render: text
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots / Video
+      description: Drag and drop images or paste links
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this hasn't been reported yet
+          required: true
+        - label: I'm using the latest version of the plugin
+        - label: I checked the [Troubleshooting guide](https://vertexa-company.github.io/lightweight-browser-support/troubleshooting/)

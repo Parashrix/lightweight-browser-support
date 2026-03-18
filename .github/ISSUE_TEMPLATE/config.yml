@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://vertexa-company.github.io/lightweight-browser-support/
+    about: Check the docs before filing an issue
+  - name: Email Support
+    url: mailto:support@vertexa.com
+    about: For private issues or license questions
