@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
   - name: Documentation
-    url: https://hexora-company.github.io/lightweight-browser-support/
+    url: https://lwb-docs.gethexora.com/
     about: Check the docs before filing an issue
