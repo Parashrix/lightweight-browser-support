@@ -1,0 +1,1 @@
+Sitemap: https://hexora-company.github.io/lightweight-browser-support/sitemap.xml

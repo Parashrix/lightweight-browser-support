@@ -1,0 +1,555 @@
+{"0": {
+    "doc": "API Reference",
+    "title": "API Reference",
+    "content": " ",
+    "url": "/lightweight-browser-support/api-reference/",
+    
+    "relUrl": "/api-reference/"
+  },"1": {
+    "doc": "API Reference",
+    "title": "Namespaces",
+    "content": "| Namespace | Contents | . | Hexora.LightweightBrowser | Core API — IWebView, LightweightBrowser, WebViewFactory, WebViewOptions, ScreenResizeHandler | . | Hexora.LightweightBrowser.Bridge | Bridge system — BridgeEventBus, JavaScriptBridge, BridgeEnvelope, BridgeMessage, BridgeMessageFilter, BridgeSerializer, NativeMessageReceiver, MessageDispatcher | . | Hexora.LightweightBrowser.DebugOverlay | BridgeDebugOverlay | . ",
+    "url": "/lightweight-browser-support/api-reference/#namespaces",
+    
+    "relUrl": "/api-reference/#namespaces"
+  },"2": {
+    "doc": "API Reference",
+    "title": "IWebView Interface",
+    "content": "The primary interface for interacting with the native webview. Obtain via LightweightBrowser.WebView. namespace Hexora.LightweightBrowser { public interface IWebView { // Properties string CurrentUrl { get; } string Title { get; } bool CanGoBack { get; } bool CanGoForward { get; } bool IsLoading { get; } Texture2D Texture { get; } // Navigation void LoadUrl(string url); void GoBack(); void GoForward(); void Reload(); void GoHome(); // Display void Show(Rect screenRect); void Hide(); // JavaScript void EvaluateJavaScript(string script, Action&lt;string&gt; resultCallback = null); // Configuration void SetDebuggingEnabled(bool enabled); void SetZoomEnabled(bool enabled); void SetMessageCallback(Action&lt;string&gt; callback); // Input (desktop only) void SendMouseEvent(int x, int y, int button, int type); void SendMouseWheel(int x, int y, int delta); void SendKeyEvent(int vkCode, int type); void SendCharEvent(char c); // Developer tools void OpenDevTools(); // Lifecycle void Tick(); void Destroy(); // Events event Action&lt;string&gt; UrlChanged; event Action&lt;string&gt; PageStarted; event Action&lt;string&gt; PageFinished; event Action&lt;string&gt; TitleChanged; event Action&lt;string, int&gt; ErrorOccurred; } } . Event Descriptions . | Event | Parameter | When | . | UrlChanged | New URL | URL changes for any reason (navigation, redirect, pushState) | . | PageStarted | URL | A page begins loading | . | PageFinished | URL | A page finishes loading (DOM ready) | . | TitleChanged | New title | The document title changes | . | ErrorOccurred | Error message, error code | A navigation or loading error occurs | . Input Parameters . SendMouseEvent(x, y, button, type) . | Parameter | Values | . | x, y | Pixel coordinates relative to webview top-left | . | button | 0 = left, 1 = right, 2 = middle | . | type | 0 = move, 1 = down, 2 = up | . SendMouseWheel(x, y, delta) . | Parameter | Values | . | delta | Positive = scroll up, negative = scroll down. Typically ±120 per tick. | . SendKeyEvent(vkCode, type) . | Parameter | Values | . | vkCode | Windows virtual key code (e.g. 0x0D = Enter, 0x08 = Backspace) | . | type | 0 = key down, 1 = key up | . ",
+    "url": "/lightweight-browser-support/api-reference/#iwebview-interface",
+    
+    "relUrl": "/api-reference/#iwebview-interface"
+  },"3": {
+    "doc": "API Reference",
+    "title": "LightweightBrowser (MonoBehaviour)",
+    "content": "The main Unity component. Add via Add Component → Hexora → Lightweight Browser. Public Properties . public IWebView WebView { get; } // The native webview public BridgeEventBus Bridge { get; } // Event bus (null if bridge disabled) public JavaScriptBridge JavaScript { get; } // JS bridge (null if bridge disabled) public string HomeUrl { get; set; } public Rect InitialRect { get; } // Current pixel rect public Rect NormalizedRect { get; } // Original config rect . Public Methods . public void LoadUrl(string url); // Navigate to URL public void GoBack(); // History back public void GoForward(); // History forward public void Reload(); // Reload page public void GoHome(); // Navigate to HomeUrl public void OpenDevTools(); // Open developer tools public void Resize(); // Recalculate rect for current screen size . ",
+    "url": "/lightweight-browser-support/api-reference/#lightweightbrowser-monobehaviour",
+    
+    "relUrl": "/api-reference/#lightweightbrowser-monobehaviour"
+  },"4": {
+    "doc": "API Reference",
+    "title": "WebViewOptions",
+    "content": "Configuration passed to WebViewFactory.Create(). [Serializable] public class WebViewOptions { public string HomeUrl { get; set; } // Default: \"https://www.google.com\" public bool DebuggingEnabled { get; set; } // Default: false public bool ZoomEnabled { get; set; } // Default: false public Rect InitialRect { get; set; } // Default: auto-calculated } . ",
+    "url": "/lightweight-browser-support/api-reference/#webviewoptions",
+    
+    "relUrl": "/api-reference/#webviewoptions"
+  },"5": {
+    "doc": "API Reference",
+    "title": "WebViewFactory",
+    "content": "Static factory that creates the correct platform IWebView. public static class WebViewFactory { public static IWebView Create(WebViewOptions options, BridgeEventBus bridgeEventBus = null); } . When bridgeEventBus is provided, the factory wraps the platform webview in a BridgedWebView decorator that intercepts events and publishes them through the bus. ",
+    "url": "/lightweight-browser-support/api-reference/#webviewfactory",
+    
+    "relUrl": "/api-reference/#webviewfactory"
+  },"6": {
+    "doc": "API Reference",
+    "title": "BridgeEventBus",
+    "content": "Central publish/subscribe hub for bridge messages. Events . public event Action&lt;BridgeMessage&gt; MessageReceived; . Methods . // Subscribe with optional filter public IDisposable Subscribe(Action&lt;BridgeMessage&gt; handler, BridgeMessageFilter filter = null); // Subscribe to named message with auto-deserialized payload public IDisposable Subscribe&lt;TPayload&gt;(string messageName, Action&lt;TPayload&gt; handler); // Publish a message (thread-safe; marshals to main thread) public void Publish(BridgeMessage message); // Clear all subscriptions public void Dispose(); . Example . // Listen only to events from the webview var sub = browser.Bridge.Subscribe( msg =&gt; Debug.Log($\"Event: {msg.Envelope.Name}\"), BridgeMessageFilter.Create().FromWebView().EventsOnly().Build() ); // Later: unsubscribe sub.Dispose(); . ",
+    "url": "/lightweight-browser-support/api-reference/#bridgeeventbus",
+    
+    "relUrl": "/api-reference/#bridgeeventbus"
+  },"7": {
+    "doc": "API Reference",
+    "title": "JavaScriptBridge",
+    "content": "Bidirectional C# ↔ JavaScript communication. Methods . // Send a structured envelope to the webview public void SendToWebView(BridgeEnvelope envelope); // Execute raw JavaScript public void ExecuteScript(string script, Action&lt;string&gt; resultCallback = null); // Push an event to JS listeners (window.unityBridge.on) public void PushEvent(string eventName, string data = null); // Register a C# handler callable from JS (window.unityBridge.call) public void RegisterHandler(string handlerName, Func&lt;string, string&gt; handler); // Unregister a handler public void UnregisterHandler(string handlerName); . Example . // Register a C# handler browser.JavaScript.RegisterHandler(\"getPlayerName\", data =&gt; { return JsonUtility.ToJson(new { name = \"Player1\" }); }); // Push an event to JS browser.JavaScript.PushEvent(\"score-updated\", \"{\\\"score\\\":42}\"); . ",
+    "url": "/lightweight-browser-support/api-reference/#javascriptbridge",
+    
+    "relUrl": "/api-reference/#javascriptbridge"
+  },"8": {
+    "doc": "API Reference",
+    "title": "BridgeEnvelope",
+    "content": "The wire-format message structure. Immutable readonly struct. public readonly struct BridgeEnvelope : IEquatable&lt;BridgeEnvelope&gt; { public readonly string Id; // UUID public readonly EnvelopeType Type; // Command, Event, Call, Response, Error public readonly string Name; // kebab-case identifier public readonly string Payload; // JSON string or null public readonly string CallbackId; // Correlation ID or null } . Static Factories . BridgeEnvelope.CreateCommand(name, payload?) BridgeEnvelope.CreateEvent(name, payload?) BridgeEnvelope.CreateCall(handler, payload?, callbackId?) BridgeEnvelope.CreateResponse(callbackId, payload?) BridgeEnvelope.CreateError(name, payload) . EnvelopeType Enum . | Value | Meaning | . | Command (0) | Instruction from C# to webview | . | Event (1) | Notification from webview to C# | . | Call (2) | Request from JS expecting a response | . | Response (3) | Reply to a Call | . | Error (4) | Error notification | . ",
+    "url": "/lightweight-browser-support/api-reference/#bridgeenvelope",
+    
+    "relUrl": "/api-reference/#bridgeenvelope"
+  },"9": {
+    "doc": "API Reference",
+    "title": "BridgeMessage",
+    "content": "Enriched wrapper around BridgeEnvelope with metadata. public readonly struct BridgeMessage { public readonly DateTime Timestamp; // UTC public readonly MessageDirection Direction; public readonly BridgeEnvelope Envelope; public readonly TimeSpan Duration; // For paired request-response } . MessageDirection Enum . | Value | Meaning | . | UnityToWebView | C# command → native webview | . | WebViewToUnity | Native webview → C# event | . | UnityToJavaScript | C# → injected JS bridge | . | JavaScriptToUnity | Injected JS bridge → C# | . ",
+    "url": "/lightweight-browser-support/api-reference/#bridgemessage",
+    
+    "relUrl": "/api-reference/#bridgemessage"
+  },"10": {
+    "doc": "API Reference",
+    "title": "BridgeMessageFilter",
+    "content": "Fluent builder for filtering subscriptions. var filter = BridgeMessageFilter.Create() .FromWebView() .EventsOnly() .WithNamePattern(\"page-*\") .Build(); . Filter Methods . | Method | Description | . | .WithDirection(MessageDirection) | Restrict to direction | . | .FromWebView() | Shorthand for WebViewToUnity | . | .ToWebView() | Shorthand for UnityToWebView | . | .FromJavaScript() | Shorthand for JavaScriptToUnity | . | .ToJavaScript() | Shorthand for UnityToJavaScript | . | .WithType(EnvelopeType) | Restrict to envelope type | . | .EventsOnly() | Shorthand for Event type | . | .CommandsOnly() | Shorthand for Command type | . | .ErrorsOnly() | Shorthand for Error type | . | .WithNamePattern(string) | Match name (supports trailing * wildcard) | . | .Build() | Terminates the chain (optional) | . ",
+    "url": "/lightweight-browser-support/api-reference/#bridgemessagefilter",
+    
+    "relUrl": "/api-reference/#bridgemessagefilter"
+  },"11": {
+    "doc": "API Reference",
+    "title": "BridgeSerializer",
+    "content": "Static JSON serializer for envelopes. public static class BridgeSerializer { public static string Serialize(BridgeEnvelope envelope); public static BridgeEnvelope Deserialize(string json); } . Uses JsonUtility with camelCase property names matching the JSON wire format. ",
+    "url": "/lightweight-browser-support/api-reference/#bridgeserializer",
+    
+    "relUrl": "/api-reference/#bridgeserializer"
+  },"12": {
+    "doc": "API Reference",
+    "title": "ScreenResizeHandler",
+    "content": "Auto-detects screen resolution changes and resizes the browser. [AddComponentMenu(\"Hexora/Screen Resize Handler\")] public class ScreenResizeHandler : MonoBehaviour { public LightweightBrowser Browser { get; set; } // Auto-detected public float PollInterval; // Default: 0.15s } . ",
+    "url": "/lightweight-browser-support/api-reference/#screenresizehandler",
+    
+    "relUrl": "/api-reference/#screenresizehandler"
+  },"13": {
+    "doc": "API Reference",
+    "title": "BridgeDebugOverlay",
+    "content": "IMGUI-based debug panel for inspecting bridge traffic. public class BridgeDebugOverlay : MonoBehaviour { public KeyCode ToggleKey; // Default: F12 public int MaxVisibleEntries; // Default: 100 public float PanelHeightRatio; // Default: 0.4 public void Initialize(BridgeEventBus eventBus); } . | Desktop: press F12 to toggle | Mobile: triple-tap to toggle | . ",
+    "url": "/lightweight-browser-support/api-reference/#bridgedebugoverlay",
+    
+    "relUrl": "/api-reference/#bridgedebugoverlay"
+  },"14": {
+    "doc": "Changelog",
+    "title": "Changelog",
+    "content": "All notable changes to Lightweight Browser are documented here. Format based on Keep a Changelog. Follows Semantic Versioning. ",
+    "url": "/lightweight-browser-support/changelog/",
+    
+    "relUrl": "/changelog/"
+  },"15": {
+    "doc": "Changelog",
+    "title": "[0.2.0] - 2026-03-20",
+    "content": "Added . | Unified Demo sample combining Browser Demo and JS Bridge Demo into a single DemoLauncher MonoBehaviour | ESC key overlay menu with Browser Demo / JS Bridge Demo / Quit buttons | Hamburger (☰) menu button for mobile platforms | Keyboard-aware toolbar that shifts above the on-screen keyboard on Android/iOS | Android AAR native plugin built and deployed | Plugin folder scaffolding with .meta files for all five platforms | OpenDevTools() support on all platforms | window.open() / target=\"_blank\" redirect to current webview (all 5 platforms) | Comprehensive test suite: 196 EditMode + 25 PlayMode tests | Testing guide documentation | . Changed . | macOS native source renamed from .m to .mm (Obj-C++) | iOS native source: added UnityGetMainWindow() forward declaration | Android: upgraded to Gradle 8.12, AGP 8.5.2, compileSdk/targetSdk 36 | PlayerSettings configured for all platforms: IL2CPP, internet permission | . Removed . | Separate BasicBrowser and JsBridgeDemo sample folders (replaced by unified Demo) | . ",
+    "url": "/lightweight-browser-support/changelog/#020---2026-03-20",
+    
+    "relUrl": "/changelog/#020---2026-03-20"
+  },"16": {
+    "doc": "Changelog",
+    "title": "[0.1.0] - 2026-03-17",
+    "content": "Added . | Initial release | Core IWebView interface and LightweightBrowser MonoBehaviour | Platform implementations: Android, iOS, Windows, macOS, Linux | Bidirectional JS bridge (window.unityBridge) with send, call, on/off patterns | Single-channel message architecture with unified BridgeEnvelope | BridgeEventBus with filtered subscriptions | BridgeMessageFilter fluent builder | ScreenResizeHandler for automatic resolution tracking | Runtime debug overlay for inspecting bridge traffic (F12) | WebViewInputForwarder for desktop mouse/keyboard forwarding | Basic browser sample scene | Full documentation: User Guide, API Reference, JS Bridge Guide, Compatibility Matrix, Troubleshooting | . ",
+    "url": "/lightweight-browser-support/changelog/#010---2026-03-17",
+    
+    "relUrl": "/changelog/#010---2026-03-17"
+  },"17": {
+    "doc": "Compatibility Matrix",
+    "title": "Compatibility Matrix",
+    "content": " ",
+    "url": "/lightweight-browser-support/compatibility/",
+    
+    "relUrl": "/compatibility/"
+  },"18": {
+    "doc": "Compatibility Matrix",
+    "title": "Platform Support",
+    "content": "| Platform | Architecture | Webview Engine | Status | . | Windows 10/11 | x86_64 | WebView2 (Edge Chromium) | Full | . | Android | ARM64, ARMv7 | android.webkit.WebView | Full | . | iOS | ARM64 | WKWebView (WebKit) | Full | . | macOS | x86_64, Apple Silicon | WKWebView (WebKit) | Full | . | Linux | x86_64 | WebKitGTK (webkit2gtk-4.1) | Full | . | Windows (ARM64) | — | — | Not tested | . | WebGL | — | — | Not applicable | . | Consoles | — | — | Not supported | . ",
+    "url": "/lightweight-browser-support/compatibility/#platform-support",
+    
+    "relUrl": "/compatibility/#platform-support"
+  },"19": {
+    "doc": "Compatibility Matrix",
+    "title": "Unity Version Compatibility",
+    "content": "| Unity Version | Tested | Notes | . | 6000.3.x (Unity 6) | Yes | Recommended | . | 6000.0.x – 6000.2.x | Expected to work | Not explicitly tested | . | 2023.2.x | Expected to work | Not explicitly tested | . | 2022.3 LTS | Minimum supported | Declared in package.json | . | 2021.x or earlier | Not supported | API incompatibilities | . ",
+    "url": "/lightweight-browser-support/compatibility/#unity-version-compatibility",
+    
+    "relUrl": "/compatibility/#unity-version-compatibility"
+  },"20": {
+    "doc": "Compatibility Matrix",
+    "title": "Operating System Requirements",
+    "content": "Windows . | Requirement | Details | . | Minimum OS | Windows 10 version 1803 (April 2018 Update) | . | WebView2 Runtime | Pre-installed on Windows 10 20H2+ and all Windows 11 | . | Missing WebView2 | Bundle the Evergreen Bootstrapper (1.7 MB) | . | Architecture | x86_64 only | . Android . | Requirement | Details | . | Minimum API | API 24 (Android 7.0 Nougat) | . | Target API | API 36 (Android 16) | . | System WebView | Bundled with Android, auto-updated via Play Store | . | Architecture | ARM64 (arm64-v8a), ARMv7 (armeabi-v7a) | . iOS . | Requirement | Details | . | Minimum iOS | iOS 14.0 | . | WKWebView | Part of iOS — no external dependencies | . | Architecture | ARM64 only | . | Xcode | 15+ required to build | . macOS . | Requirement | Details | . | Minimum macOS | macOS 11 (Big Sur) | . | WKWebView | Part of macOS — no external dependencies | . | Architecture | x86_64 and Apple Silicon (Universal Binary) | . Linux . | Requirement | Details | . | Runtime | GTK 3 + webkit2gtk-4.1 | . | Ubuntu/Debian | sudo apt install libwebkit2gtk-4.1-0 libgtk-3-0 | . | Fedora/RHEL | sudo dnf install webkit2gtk4.1 gtk3 | . | Arch | sudo pacman -S webkit2gtk-4.1 gtk3 | . | Architecture | x86_64 only | . ",
+    "url": "/lightweight-browser-support/compatibility/#operating-system-requirements",
+    
+    "relUrl": "/compatibility/#operating-system-requirements"
+  },"21": {
+    "doc": "Compatibility Matrix",
+    "title": "Scripting Backend Compatibility",
+    "content": "| Backend | Windows | Android | iOS | macOS | Linux | . | IL2CPP | Yes | Yes | Yes (required) | Yes | Yes | . | Mono | Yes | Yes | No | Yes | Yes | . Use IL2CPP for all platforms for best compatibility, performance, and code stripping. ",
+    "url": "/lightweight-browser-support/compatibility/#scripting-backend-compatibility",
+    
+    "relUrl": "/compatibility/#scripting-backend-compatibility"
+  },"22": {
+    "doc": "Compatibility Matrix",
+    "title": "Render Pipeline Compatibility",
+    "content": "| Pipeline | Status | Notes | . | Built-in (Standard) | Full support | Primary development pipeline | . | URP | Full support | Texture2D is pipeline-agnostic | . | HDRP | Full support | Texture2D is pipeline-agnostic | . ",
+    "url": "/lightweight-browser-support/compatibility/#render-pipeline-compatibility",
+    
+    "relUrl": "/compatibility/#render-pipeline-compatibility"
+  },"23": {
+    "doc": "Compatibility Matrix",
+    "title": "Media &amp; Codec Support",
+    "content": "Codec support depends on the platform’s webview engine, not the plugin. Video Codecs . | Codec | Windows (WebView2) | Android | iOS | macOS | Linux (WebKitGTK) | . | H.264 / AVC | Yes | Yes | Yes | Yes | System GStreamer | . | H.265 / HEVC | Yes (Win10+) | Device dependent | Yes (HW) | Yes (HW) | Rare | . | VP8 | Yes | Yes | No | No | System GStreamer | . | VP9 | Yes | Yes | No | No | System GStreamer | . | AV1 | Yes (Win11) | Device dependent | iOS 17+ | macOS 14+ | Rare | . Audio Codecs . | Codec | Windows | Android | iOS | macOS | Linux | . | AAC | Yes | Yes | Yes | Yes | System GStreamer | . | MP3 | Yes | Yes | Yes | Yes | System GStreamer | . | Opus | Yes | Yes | iOS 15+ | Yes | System GStreamer | . | Vorbis | Yes | Yes | No | No | System GStreamer | . | FLAC | Yes | Yes | Yes | Yes | System GStreamer | . Web Features . | Feature | Windows | Android | iOS | macOS | Linux | . | WebGL 2.0 | Yes | Yes | Yes | Yes | Yes | . | WebRTC | Yes | API 28+ | iOS 14.5+ | Yes | Yes | . | WebAssembly | Yes | Yes | Yes | Yes | Yes | . | Service Workers | Yes | Yes | Yes | Yes | Yes | . | IndexedDB | Yes | Yes | Yes | Yes | Yes | . | LocalStorage | Yes | Yes | Yes | Yes | Yes | . | Geolocation | Yes* | Yes* | Yes* | Yes* | Yes* | . * Requires OS-level permissions. ",
+    "url": "/lightweight-browser-support/compatibility/#media--codec-support",
+    
+    "relUrl": "/compatibility/#media--codec-support"
+  },"24": {
+    "doc": "Compatibility Matrix",
+    "title": "Known Limitations",
+    "content": "| Limitation | Platforms | Details | . | One webview per app | All | Only one LightweightBrowser instance is supported | . | No file uploads | Windows | File picker may not appear in offscreen mode | . | Popup window blocking | All | window.open() and target=\"_blank\" are redirected to current webview. Deliberate security restriction. History preserved. | . | No PDF viewer | Linux, Android | Depends on system webview’s built-in viewer | . | Cleartext HTTP | Android, iOS | HTTPS required by default | . | Texture capture rate | Windows | Capped at 30 FPS | . ",
+    "url": "/lightweight-browser-support/compatibility/#known-limitations",
+    
+    "relUrl": "/compatibility/#known-limitations"
+  },"25": {
+    "doc": "Demo Downloads",
+    "title": "Demo Downloads",
+    "content": "Try Lightweight Browser before you buy. Each demo includes the BasicBrowser sample scene with toolbar navigation, URL bar, and JavaScript bridge. Demo builds are hosted on GitHub Releases. Click the platform link below to download the latest version. ",
+    "url": "/lightweight-browser-support/demo/",
+    
+    "relUrl": "/demo/"
+  },"26": {
+    "doc": "Demo Downloads",
+    "title": "Available Platforms",
+    "content": "| Platform | Download | Size | Notes | . | Windows (x64) | Download .zip | — | Windows 10 1803+ required. WebView2 Runtime pre-installed on most systems. | . | macOS (Universal) | Download .zip | — | macOS 11 (Big Sur)+. Universal binary (Intel + Apple Silicon). | . | Linux (x64) | Download .tar.gz | — | Requires libwebkit2gtk-4.1 and libgtk-3. | . | Android | Download .apk | — | Android 7.0+ (API 24). Enable “Install from unknown sources.” | . | iOS | Not available | — | iOS builds require Xcode signing. Use the Unity project with your own provisioning profile. | . ",
+    "url": "/lightweight-browser-support/demo/#available-platforms",
+    
+    "relUrl": "/demo/#available-platforms"
+  },"27": {
+    "doc": "Demo Downloads",
+    "title": "What’s Included",
+    "content": "The demo showcases core plugin features: . | Web browsing — Navigate any HTTPS website with full HTML5/CSS3/JS support | Toolbar — Built-in URL bar, Back, Forward, Reload, Home buttons | Texture rendering — Web content rendered to Texture2D within Unity UI | Screen resize — Auto-adapts to window/resolution changes | JavaScript bridge — Open the debug overlay (F12 on desktop) to see live bridge messages | Input forwarding — Mouse clicks, keyboard input, and scroll events | . ",
+    "url": "/lightweight-browser-support/demo/#whats-included",
+    
+    "relUrl": "/demo/#whats-included"
+  },"28": {
+    "doc": "Demo Downloads",
+    "title": "Running the Demo",
+    "content": "Windows . | Extract LWB-Demo-Windows-x64.zip | Run LWB Demo.exe | The browser opens with the default home page | . macOS . | Extract LWB-Demo-macOS.zip | If blocked by Gatekeeper: right-click → Open → Open again | The app launches with the browser scene | . Linux . | Extract: tar xzf LWB-Demo-Linux-x64.tar.gz | Install dependencies if needed: sudo apt install libwebkit2gtk-4.1-0 libgtk-3-0 # Ubuntu/Debian sudo dnf install webkit2gtk4.1 gtk3 # Fedora . | Run: ./LWB-Demo-Linux-x64 | . Android . | Transfer LWB-Demo-Android.apk to your device | Tap to install (allow unknown sources if prompted) | Open LWB Demo from the app drawer | . ",
+    "url": "/lightweight-browser-support/demo/#running-the-demo",
+    
+    "relUrl": "/demo/#running-the-demo"
+  },"29": {
+    "doc": "Demo Downloads",
+    "title": "Version History",
+    "content": "| Version | Date | Changes | . | Builds not yet uploaded | — | Check back soon or see the Releases page | . ",
+    "url": "/lightweight-browser-support/demo/#version-history",
+    
+    "relUrl": "/demo/#version-history"
+  },"30": {
+    "doc": "Demo Downloads",
+    "title": "Full Version",
+    "content": "Like what you see? Get the full plugin with source code from the Unity Asset Store: . Get on Asset Store . The full version includes: . | Complete C# source code | All 5 platform native plugins | JavaScript ↔ C# bridge system | Sample scenes and scripts | Priority email support | . ",
+    "url": "/lightweight-browser-support/demo/#full-version",
+    
+    "relUrl": "/demo/#full-version"
+  },"31": {
+    "doc": "Home",
+    "title": "Lightweight Browser",
+    "content": "A lightweight multi-platform native webview plugin for Unity that renders web content as Texture2D, allowing Unity UI and game objects to draw on top. ",
+    "url": "/lightweight-browser-support/#lightweight-browser",
+    
+    "relUrl": "/#lightweight-browser"
+  },"32": {
+    "doc": "Home",
+    "title": "Key Features",
+    "content": ". | 5 platforms — Windows (WebView2), Android (System WebView), iOS (WKWebView), macOS (WKWebView), Linux (WebKitGTK) | Texture-based rendering — Web content rendered to Texture2D, pipeline-agnostic (Built-in, URP, HDRP) | Bidirectional JS ↔ C# bridge — window.unityBridge API with send, call, on/off patterns | One component setup — Add LightweightBrowser to any GameObject, set a URL, press Play | Auto-resize — ScreenResizeHandler detects resolution changes and adapts | Debug overlay — Real-time bridge message inspector (F12) | . ",
+    "url": "/lightweight-browser-support/#key-features",
+    
+    "relUrl": "/#key-features"
+  },"33": {
+    "doc": "Home",
+    "title": "Prerequisites",
+    "content": ". | Unity 2022.3 LTS or newer (Unity 6 recommended) | IL2CPP scripting backend recommended (Mono supported on desktop) | Linux only: install libwebkit2gtk-4.1 and libgtk-3 via your package manager | All other platforms ship with their webview runtime pre-installed | . See the User Guide for full details. ",
+    "url": "/lightweight-browser-support/#prerequisites",
+    
+    "relUrl": "/#prerequisites"
+  },"34": {
+    "doc": "Home",
+    "title": "Quick Links",
+    "content": "| Page | Description | . | User Guide | Prerequisites, installation, quick start, inspector setup | . | Demo Downloads | Try before you buy — pre-built demos for all platforms | . | API Reference | Complete C# and JavaScript API | . | JavaScript Bridge | Bidirectional JS ↔ C# communication | . | Compatibility Matrix | Platforms, Unity versions, codecs | . | Troubleshooting | Common issues and solutions | . | Testing Guide | Automated + manual test checklists | . | Changelog | Release history | . | Platform Roadmap | Vote for the next platform — Android, macOS, iOS, Linux | . | Report a Bug | Bug reports &amp; feature requests | . ",
+    "url": "/lightweight-browser-support/#quick-links",
+    
+    "relUrl": "/#quick-links"
+  },"35": {
+    "doc": "Home",
+    "title": "Supported Platforms",
+    "content": "| Platform | Engine | Min Version | . | Windows 10/11 | WebView2 (Edge Chromium) | Windows 10 1803 | . | Android | System WebView | API 24 (Android 7.0) | . | iOS | WKWebView | iOS 14.0 | . | macOS | WKWebView | macOS 11 (Big Sur) | . | Linux | WebKitGTK | webkit2gtk-4.1 | . ",
+    "url": "/lightweight-browser-support/#supported-platforms",
+    
+    "relUrl": "/#supported-platforms"
+  },"36": {
+    "doc": "Home",
+    "title": "Unity Version Support",
+    "content": "| Version | Status | . | Unity 6 (6000.x) | Recommended | . | Unity 2023.x | Supported | . | Unity 2022.3 LTS | Minimum supported | . ",
+    "url": "/lightweight-browser-support/#unity-version-support",
+    
+    "relUrl": "/#unity-version-support"
+  },"37": {
+    "doc": "Home",
+    "title": "Support",
+    "content": ". | Issues: GitHub Issues | . ",
+    "url": "/lightweight-browser-support/#support",
+    
+    "relUrl": "/#support"
+  },"38": {
+    "doc": "Home",
+    "title": "Home",
+    "content": " ",
+    "url": "/lightweight-browser-support/",
+    
+    "relUrl": "/"
+  },"39": {
+    "doc": "JavaScript Bridge",
+    "title": "JavaScript Bridge Guide",
+    "content": "The JavaScript bridge enables bidirectional communication between your Unity C# code and JavaScript running inside the webview. Use cases: . | Calling C# functions from web pages | Pushing data and events from Unity to web pages | Building hybrid apps with web-based UI and native Unity rendering | Embedding interactive web dashboards inside your game | . ",
+    "url": "/lightweight-browser-support/js-bridge-guide/#javascript-bridge-guide",
+    
+    "relUrl": "/js-bridge-guide/#javascript-bridge-guide"
+  },"40": {
+    "doc": "JavaScript Bridge",
+    "title": "Enabling the Bridge",
+    "content": "In the Inspector, enable Bridge Enabled on the LightweightBrowser component. This: . | Wraps the native webview in a BridgedWebView decorator | Creates a BridgeEventBus for message pub/sub | Creates a JavaScriptBridge for structured communication | Auto-injects the window.unityBridge JS API on every page load | . ",
+    "url": "/lightweight-browser-support/js-bridge-guide/#enabling-the-bridge",
+    
+    "relUrl": "/js-bridge-guide/#enabling-the-bridge"
+  },"41": {
+    "doc": "JavaScript Bridge",
+    "title": "Architecture Overview",
+    "content": "┌────────────────────┐ ┌──────────────────────┐ │ Unity C# │ │ Web Page (JS) │ │ │ │ │ │ JavaScriptBridge │◄────────►│ window.unityBridge │ │ BridgeEventBus │ │ │ │ │ JSON │ │ │ Your MonoBehaviour│ envelope │ Your JavaScript │ └────────────────────┘ └──────────────────────┘ . All messages use a single JSON envelope format: . { \"id\": \"uuid\", \"type\": \"command|event|call|response|error\", \"name\": \"kebab-case-name\", \"payload\": \"json-string-or-null\", \"callbackId\": \"uuid-or-null\" } . ",
+    "url": "/lightweight-browser-support/js-bridge-guide/#architecture-overview",
+    
+    "relUrl": "/js-bridge-guide/#architecture-overview"
+  },"42": {
+    "doc": "JavaScript Bridge",
+    "title": "JavaScript API (window.unityBridge)",
+    "content": "The bridge is automatically injected into every page. Available after DOMContentLoaded. Send an Event (JS → C#) . Fire-and-forget notification from JavaScript to C#. // Simple event window.unityBridge.send('button-clicked'); // Event with data window.unityBridge.send('form-submitted', { name: 'John', email: 'john@example.com' }); . Call a C# Handler (JS → C#, with response) . Request-response pattern. Returns a Promise. // Call a registered C# handler and await the response const result = await window.unityBridge.call('getPlayerStats'); console.log(result); // { health: 100, score: 42 } // With parameters const item = await window.unityBridge.call('getInventoryItem', { slot: 3 }); . Listen for Events from C# (C# → JS) . // Subscribe window.unityBridge.on('score-updated', (data) =&gt; { document.getElementById('score').textContent = data.score; }); // Unsubscribe function myHandler(data) { /* ... */ } window.unityBridge.on('health-changed', myHandler); window.unityBridge.off('health-changed', myHandler); . Check Bridge Availability . if (window.unityBridge) { window.unityBridge.send('app-ready'); } else { console.log('Unity bridge not available — running in regular browser'); } . ",
+    "url": "/lightweight-browser-support/js-bridge-guide/#javascript-api-windowunitybridge",
+    
+    "relUrl": "/js-bridge-guide/#javascript-api-windowunitybridge"
+  },"43": {
+    "doc": "JavaScript Bridge",
+    "title": "C# API",
+    "content": "Register a Handler . Register a function that JavaScript can call with window.unityBridge.call(). using Hexora.LightweightBrowser; public class GameBridge : MonoBehaviour { [SerializeField] private LightweightBrowser _browser; void Start() { _browser.JavaScript.RegisterHandler(\"getPlayerStats\", data =&gt; { var stats = new PlayerStats { health = player.Health, score = player.Score }; return JsonUtility.ToJson(stats); }); _browser.JavaScript.RegisterHandler(\"buyItem\", data =&gt; { var request = JsonUtility.FromJson&lt;BuyRequest&gt;(data); bool success = shop.Purchase(request.itemId); return JsonUtility.ToJson(new { success }); }); } void OnDestroy() { _browser.JavaScript?.UnregisterHandler(\"getPlayerStats\"); _browser.JavaScript?.UnregisterHandler(\"buyItem\"); } } . Push Events to JavaScript (C# → JS) . // Simple event _browser.JavaScript.PushEvent(\"game-started\"); // With data _browser.JavaScript.PushEvent(\"score-updated\", JsonUtility.ToJson(new { score = 42 })); . Subscribe to Events from JavaScript (JS → C# via EventBus) . void Start() { // Subscribe with filter — only events from JavaScript _sub = _browser.Bridge.Subscribe( msg =&gt; HandleJSEvent(msg), BridgeMessageFilter.Create() .FromJavaScript() .EventsOnly() .Build() ); // Subscribe to a specific named event with typed payload _scoreSub = _browser.Bridge.Subscribe&lt;ScorePayload&gt;( \"submit-score\", payload =&gt; SaveScore(payload.score, payload.playerName) ); } void OnDestroy() { _sub?.Dispose(); _scoreSub?.Dispose(); } . Execute Raw JavaScript . // Fire and forget _browser.JavaScript.ExecuteScript(\"document.title = 'Hello from Unity'\"); // With result callback _browser.JavaScript.ExecuteScript( \"document.querySelectorAll('a').length\", result =&gt; Debug.Log($\"Found {result} links\") ); . ",
+    "url": "/lightweight-browser-support/js-bridge-guide/#c-api",
+    
+    "relUrl": "/js-bridge-guide/#c-api"
+  },"44": {
+    "doc": "JavaScript Bridge",
+    "title": "Complete Example: Score Dashboard",
+    "content": "Unity Side (C#) . using UnityEngine; using Hexora.LightweightBrowser; using Hexora.LightweightBrowser.Bridge; public class DashboardBridge : MonoBehaviour { [SerializeField] private LightweightBrowser _browser; private int _score = 0; void Start() { // JS can ask for current score _browser.JavaScript.RegisterHandler(\"getScore\", _ =&gt; JsonUtility.ToJson(new ScoreData { score = _score }) ); // Listen for JS events _browser.Bridge.Subscribe( msg =&gt; { if (msg.Envelope.Name == \"player-name-set\") { var data = JsonUtility.FromJson&lt;NameData&gt;(msg.Envelope.Payload); Debug.Log($\"Player name: {data.name}\"); } }, BridgeMessageFilter.Create().FromJavaScript().EventsOnly().Build() ); } public void AddScore(int points) { _score += points; _browser.JavaScript.PushEvent(\"score-updated\", JsonUtility.ToJson(new ScoreData { score = _score })); } [System.Serializable] struct ScoreData { public int score; } [System.Serializable] struct NameData { public string name; } } . Web Side (HTML/JS) . &lt;!DOCTYPE html&gt; &lt;html&gt; &lt;head&gt;&lt;title&gt;Score Dashboard&lt;/title&gt;&lt;/head&gt; &lt;body&gt; &lt;h1&gt;Score: &lt;span id=\"score\"&gt;0&lt;/span&gt;&lt;/h1&gt; &lt;input id=\"name\" placeholder=\"Enter your name\" /&gt; &lt;button onclick=\"submitName()\"&gt;Submit&lt;/button&gt; &lt;script&gt; async function init() { if (!window.unityBridge) return; const data = await window.unityBridge.call('getScore'); document.getElementById('score').textContent = data.score; } if (window.unityBridge) { window.unityBridge.on('score-updated', (data) =&gt; { document.getElementById('score').textContent = data.score; }); } function submitName() { const name = document.getElementById('name').value; if (window.unityBridge) { window.unityBridge.send('player-name-set', { name }); } } init(); &lt;/script&gt; &lt;/body&gt; &lt;/html&gt; . ",
+    "url": "/lightweight-browser-support/js-bridge-guide/#complete-example-score-dashboard",
+    
+    "relUrl": "/js-bridge-guide/#complete-example-score-dashboard"
+  },"45": {
+    "doc": "JavaScript Bridge",
+    "title": "Message Flow Diagram",
+    "content": "JS: window.unityBridge.call('getScore') │ ▼ _postToNative(envelope) ← auto-detected channel │ ▼ NativeMessageReceiver.OnNativeCallback() ← MonoPInvokeCallback │ ▼ MessageDispatcher.DispatchFromNative() ← deserializes envelope │ ├─► BridgeEventBus.Publish() ← notifies all subscribers │ └─► JavaScriptBridge.HandleCall() ← looks up handler │ ▼ handler(\"getScore\") returns JSON ← your C# code │ ▼ SendToWebView(responseEnvelope) ← sends response │ ▼ EvaluateJavaScript(\"_onMessageFromUnity(...)\") │ ▼ Promise resolves in JS ← caller gets result . ",
+    "url": "/lightweight-browser-support/js-bridge-guide/#message-flow-diagram",
+    
+    "relUrl": "/js-bridge-guide/#message-flow-diagram"
+  },"46": {
+    "doc": "JavaScript Bridge",
+    "title": "Tips",
+    "content": ". | Bridge adds overhead — If you don’t need JS ↔ C# communication, leave Bridge Enabled unchecked. | JSON payloads — Use JsonUtility.ToJson() / JsonUtility.FromJson&lt;T&gt;() on the C# side. | Handler names — Use kebab-case: get-player-stats, buy-item, submit-score. | Error handling — If a C# handler throws, the bridge sends an error envelope back to JS. | Page reloads — The bridge script is re-injected on every PageFinished event. Re-register JS listeners on DOMContentLoaded. | Debug overlay — Enable during development to see all bridge traffic. Toggle with F12. | . ",
+    "url": "/lightweight-browser-support/js-bridge-guide/#tips",
+    
+    "relUrl": "/js-bridge-guide/#tips"
+  },"47": {
+    "doc": "JavaScript Bridge",
+    "title": "JavaScript Bridge",
+    "content": " ",
+    "url": "/lightweight-browser-support/js-bridge-guide/",
+    
+    "relUrl": "/js-bridge-guide/"
+  },"48": {
+    "doc": "Report a Bug",
+    "title": "Report a Bug",
+    "content": "Found an issue with Lightweight Browser? We want to hear about it. ",
+    "url": "/lightweight-browser-support/report-bug/",
+    
+    "relUrl": "/report-bug/"
+  },"49": {
+    "doc": "Report a Bug",
+    "title": "Submit a Bug Report",
+    "content": "Report a Bug Request a Feature Browse Open Issues . ",
+    "url": "/lightweight-browser-support/report-bug/#submit-a-bug-report",
+    
+    "relUrl": "/report-bug/#submit-a-bug-report"
+  },"50": {
+    "doc": "Report a Bug",
+    "title": "Before Reporting",
+    "content": ". | Check Troubleshooting — your issue may have a known fix | Search existing issues — it may already be reported | Update to the latest version — the bug may be fixed in a newer release | . ",
+    "url": "/lightweight-browser-support/report-bug/#before-reporting",
+    
+    "relUrl": "/report-bug/#before-reporting"
+  },"51": {
+    "doc": "Report a Bug",
+    "title": "What to Include",
+    "content": "A good bug report helps us fix the issue faster. Please include: . | Info | Example | . | Plugin version | 0.2.0 (check package.json or Package Manager) | . | Unity version | 6000.3.3f1 | . | Platform | Windows 11, Android 14 (Pixel 8), iOS 17 (iPhone 15), etc. | . | Scripting backend | IL2CPP or Mono | . | Render pipeline | Built-in, URP, HDRP | . | Steps to reproduce | Minimal steps to trigger the bug | . | Expected behavior | What should happen | . | Actual behavior | What actually happens | . | Console logs | Any [LWB] prefixed errors from the Unity Console | . | Screenshots/video | If it’s a visual issue | . ",
+    "url": "/lightweight-browser-support/report-bug/#what-to-include",
+    
+    "relUrl": "/report-bug/#what-to-include"
+  },"52": {
+    "doc": "Report a Bug",
+    "title": "Collecting Debug Info",
+    "content": "Unity Console Logs . | Open Window → Console | Filter by [LWB] to find plugin-specific messages | Right-click → Copy to clipboard | . Bridge Debug Overlay . If the issue involves the JS ↔ C# bridge: . | Enable Bridge Enabled + Debug Overlay Enabled in the Inspector | Press F12 in Play mode to open the overlay | Screenshot the message log | . Device Logs . | Platform | How to collect | . | Windows | Unity Console + Event Viewer (Application log) | . | Android | adb logcat -s Unity LWB | . | iOS | Xcode → Devices and Simulators → Console | . | macOS | Unity Console | . | Linux | Unity Console + journalctl --user -f | . ",
+    "url": "/lightweight-browser-support/report-bug/#collecting-debug-info",
+    
+    "relUrl": "/report-bug/#collecting-debug-info"
+  },"53": {
+    "doc": "Report a Bug",
+    "title": "Contact",
+    "content": "For private issues or license questions, use GitHub Issues. ",
+    "url": "/lightweight-browser-support/report-bug/#contact",
+    
+    "relUrl": "/report-bug/#contact"
+  },"54": {
+    "doc": "Platform Roadmap",
+    "title": "Platform Roadmap",
+    "content": "Lightweight Browser currently supports Windows. We’re actively working on bringing additional platforms to the plugin. All future platforms will be included in the same package at no extra cost. ",
+    "url": "/lightweight-browser-support/roadmap/",
+    
+    "relUrl": "/roadmap/"
+  },"55": {
+    "doc": "Platform Roadmap",
+    "title": "Current Status",
+    "content": "| Platform | Engine | Status | . | Windows 10/11 | WebView2 (Edge Chromium) | ✅ Available | . | Android | System WebView | 🗓️ Planned | . | macOS | WKWebView (WebKit) | 🗓️ Planned | . | iOS | WKWebView (WebKit) | 🗓️ Planned | . | Linux | WebKitGTK | 🗓️ Planned | . ",
+    "url": "/lightweight-browser-support/roadmap/#current-status",
+    
+    "relUrl": "/roadmap/#current-status"
+  },"56": {
+    "doc": "Platform Roadmap",
+    "title": "Planned Platform Details",
+    "content": "Android . | Engine: android.webkit.WebView (bundled with Android, auto-updated via Play Store) | Min API: 24 (Android 7.0 Nougat) | Architecture: ARM64 (arm64-v8a), ARMv7 (armeabi-v7a) | . macOS . | Engine: WKWebView (part of macOS — no external dependencies) | Min OS: macOS 11 (Big Sur) | Architecture: Universal Binary (x86_64 Intel + ARM64 Apple Silicon) | . iOS . | Engine: WKWebView (part of iOS — no external dependencies) | Min OS: iOS 14.0 | Architecture: ARM64 | Build: Requires Xcode 15+ | . Linux . | Engine: WebKitGTK (webkit2gtk-4.1) | Runtime: Requires libwebkit2gtk-4.1 and libgtk-3 installed via package manager | Architecture: x86_64 | . ",
+    "url": "/lightweight-browser-support/roadmap/#planned-platform-details",
+    
+    "relUrl": "/roadmap/#planned-platform-details"
+  },"57": {
+    "doc": "Platform Roadmap",
+    "title": "Vote for the Next Platform",
+    "content": "Help us prioritize! Tell us which platform you need most and we’ll focus on shipping it first. The more votes a platform receives, the higher it moves in our development queue. Loading… Can’t see the form? Open it in a new tab. Your information is only used to prioritize platform development and send shipping notifications. We never share your data with third parties. ",
+    "url": "/lightweight-browser-support/roadmap/#vote-for-the-next-platform",
+    
+    "relUrl": "/roadmap/#vote-for-the-next-platform"
+  },"58": {
+    "doc": "Platform Roadmap",
+    "title": "FAQ",
+    "content": "Will new platforms cost extra? No. All platforms will be included in the same Lightweight Browser package on the Unity Asset Store. Can I use the Windows version now while waiting for my platform? Absolutely. The C# API is designed to be cross-platform from day one. When your target platform ships, your existing code will work with minimal or no changes. How will I know when a platform ships? If you provide your email in the form above, we’ll notify you directly. Updates are also posted on our Changelog and Asset Store page. ",
+    "url": "/lightweight-browser-support/roadmap/#faq",
+    
+    "relUrl": "/roadmap/#faq"
+  },"59": {
+    "doc": "Testing Guide",
+    "title": "Testing Guide",
+    "content": "This guide covers both automated (Unity Test Runner) and manual testing for Lightweight Browser. ",
+    "url": "/lightweight-browser-support/testing-guide/",
+    
+    "relUrl": "/testing-guide/"
+  },"60": {
+    "doc": "Testing Guide",
+    "title": "Automated Tests",
+    "content": "Overview . | Suite | Framework | Tests | Scope | . | EditMode | NUnit [Test] | ~196 | Pure C# logic — no Play mode or native plugins needed | . | PlayMode | Unity [UnityTest] | ~25 | MonoBehaviour lifecycle, component wiring, coroutine flows | . Running Tests . | Open the Unity project | Window → General → Test Runner | Select the EditMode or PlayMode tab | Click Run All | . Command line: . Unity.exe -runTests -batchmode -projectPath . -testResults ./TestResults.xml -testPlatform EditMode . ",
+    "url": "/lightweight-browser-support/testing-guide/#automated-tests",
+    
+    "relUrl": "/testing-guide/#automated-tests"
+  },"61": {
+    "doc": "Testing Guide",
+    "title": "Manual Tests — Common (All Platforms)",
+    "content": "Basic Functionality . | # | Test | Verify | . | C1 | Enter Play mode | Demo page renders, no Console errors | . | C2 | URL bar → type URL → Enter | Page loads correctly | . | C3 | Click link on page | Navigates, URL bar updates | . | C4 | Back button | Returns to previous page | . | C5 | Forward button | Goes forward in history | . | C6 | Reload button | Page refreshes | . | C7 | Home button | Navigates to home URL | . | C8 | target=\"_blank\" link | Navigates in-place, no new window | . | C9 | Back after _blank redirect | Returns to original page | . JS ↔ C# Bridge . | # | Test | Verify | . | C10 | unityBridge.send() from demo | C# receives event in Console | . | C11 | unityBridge.call() from demo | C# handler responds, JS gets result | . | C12 | C# → JS event push | JS listener fires on demo page | . | C13 | Bridge message during navigation | No exception | . Resize / Rotation . | # | Test | Verify | . | C14 | Resize window or rotate device | Webview re-renders at new resolution | . | C15 | Rapid resize/rotation | No crash, no stale frame | . | C16 | Text sharpness after resize | Native surface re-created (not stretched) | . | C17 | RawImage position after resize | Correct screen alignment | . | C18 | Normalized rect (0-1) | Resolves at any resolution | . | C19 | Rotate mid-page-load | Loading continues | . | C20 | History after resize | Back/Forward survive | . Input After Resize . | # | Test | Verify | . | C21 | Click coordinates post-resize | Hits correct element | . | C22 | Keyboard post-resize | Text fields work | . | C23 | Scroll post-resize | Scrolling works | . Memory &amp; Lifecycle . | # | Test | Verify | . | C24 | Repeated resize → Profiler | No texture leak | . | C25 | Destroy mid-resize | No crash | . | C26 | Bridge messages during rotation | Graceful handling | . ",
+    "url": "/lightweight-browser-support/testing-guide/#manual-tests--common-all-platforms",
+    
+    "relUrl": "/testing-guide/#manual-tests--common-all-platforms"
+  },"62": {
+    "doc": "Testing Guide",
+    "title": "Manual Tests — Platform-Specific",
+    "content": "Windows (WebView2) . | # | Test | Verify | . | W1 | Drag Game view to resize | Updates within ~150 ms | . | W2 | Minimize → Restore | No blank texture | . | W3 | OpenDevTools() | DevTools window opens | . | W4 | Mouse hover/cursor | Cursor changes on links | . macOS (WKWebView) . | # | Test | Verify | . | M1 | Drag window edge | Webview scales | . | M2 | Full-screen toggle | Adapts to resolution | . | M3 | OpenDevTools() | Web Inspector opens | . Linux (WebKitGTK) . | # | Test | Verify | . | L1 | Window resize | Webview tracks size | . | L2 | OpenDevTools() | Inspector opens | . | L3 | Wayland vs X11 | Both work | . Android . | # | Test | Verify | . | A1 | Portrait → Landscape | No black bars | . | A2 | Landscape → Portrait | No distortion | . | A3 | Split-screen / freeform | Resize works | . | A4 | Pause → Resume | Webview recovers | . | A5 | Soft keyboard | Layout adjusts | . | A6 | External schemes (tel:, mailto:) | No crash | . iOS (WKWebView) . | # | Test | Verify | . | I1 | Portrait → Landscape | Safe area respected | . | I2 | Landscape → Portrait | No distortion | . | I3 | Background → Foreground | Webview recovers | . | I4 | Safe area / notch | No under-notch render | . | I5 | Keyboard appears | Input field visible | . ",
+    "url": "/lightweight-browser-support/testing-guide/#manual-tests--platform-specific",
+    
+    "relUrl": "/testing-guide/#manual-tests--platform-specific"
+  },"63": {
+    "doc": "Troubleshooting",
+    "title": "Troubleshooting &amp; FAQ",
+    "content": " ",
+    "url": "/lightweight-browser-support/troubleshooting/#troubleshooting--faq",
+    
+    "relUrl": "/troubleshooting/#troubleshooting--faq"
+  },"64": {
+    "doc": "Troubleshooting",
+    "title": "Common Issues",
+    "content": "White/Blank Screen . Symptom: The browser area shows a white or blank texture. | Possible Cause | Solution | . | WebView2 not installed (Windows) | Install WebView2 Runtime | . | WebKitGTK not installed (Linux) | sudo apt install libwebkit2gtk-4.1-0 libgtk-3-0 | . | URL blocked by security | Use https:// instead of http:// | . | DLL not loaded | Check Unity Console for DLL loading errors | . | Webview off-screen | Set Normalised Rect to (0,0,0,0) for fullscreen | . Address Bar Not Updating . | Possible Cause | Solution | . | Missing event subscription | Subscribe to _browser.WebView.UrlChanged | . | WebView not ready | Subscribe in Start()/Update() with null-check | . Back/Forward Buttons Don’t Work . | Possible Cause | Solution | . | Not polling state | Read WebView.CanGoBack/CanGoForward each frame | . Keyboard Input Not Working . | Possible Cause | Solution | . | Browser doesn’t have focus | Click on the browser RawImage first | . | InputForwarder missing | Add the InputForwarder component to the same GameObject | . Black Texture / No Capture . | Possible Cause | Solution | . | GPU driver issue | Update GPU drivers (PrintWindow + PW_RENDERFULLCONTENT) | . | DPI scaling | Ensure Normalised Rect accounts for system DPI | . | Page not loaded | Wait for PageFinished event before expecting texture | . Bridge Messages Not Arriving . | Possible Cause | Solution | . | Bridge not enabled | Check Bridge Enabled in Inspector | . | Wrong handler name | Names are case-sensitive | . | Page reloaded | Re-register JS listeners on DOMContentLoaded | . | Subscription disposed | Verify your IDisposable subscription is alive | . ",
+    "url": "/lightweight-browser-support/troubleshooting/#common-issues",
+    
+    "relUrl": "/troubleshooting/#common-issues"
+  },"65": {
+    "doc": "Troubleshooting",
+    "title": "FAQ",
+    "content": "Can I show multiple browser windows? . No. One webview instance per application is supported. Does it work in the Unity Editor? . Yes on Windows Editor — uses the same WebView2 engine. Other platforms fall back to EditorWebView if native DLLs are missing. Can I load local HTML files? . Yes. Use a file:// URL: . string path = Path.Combine(Application.streamingAssetsPath, \"mypage.html\"); _browser.LoadUrl(\"file://\" + path); . On Android, use file:///android_asset/ for StreamingAssets. Can I use HTTP instead of HTTPS? . | Windows / macOS / Linux: Yes. | Android: Add android:usesCleartextTraffic=\"true\" to AndroidManifest.xml. | iOS: Add an ATS exception in Info.plist. | . Does it play videos? . Yes — depends on the platform webview engine. See Compatibility Matrix for codec details. Can I intercept/block specific URLs? . Not directly. Options: . | Monitor UrlChanged and call GoBack() for blocked URLs | Inject JavaScript to intercept link clicks | . How do I inject CSS? . _browser.WebView.EvaluateJavaScript(@\" var style = document.createElement('style'); style.textContent = 'body { background: #1a1a2e !important; }'; document.head.appendChild(style); \"); . What’s the performance impact? . | CPU: Texture capture (PrintWindow) capped at 30 FPS | Memory: One Texture2D at screen resolution (~8 MB for 1920x1080 RGBA) | GPU: Minimal — single RawImage blit | Bridge: Negligible JSON serialization overhead | . Can I use the new Input System? . The plugin uses legacy Input. Enable both Input Systems in Player Settings (Active Input Handling → Both). How do I handle errors? . _browser.WebView.ErrorOccurred += (message, code) =&gt; { Debug.LogError($\"WebView error ({code}): {message}\"); }; . ",
+    "url": "/lightweight-browser-support/troubleshooting/#faq",
+    
+    "relUrl": "/troubleshooting/#faq"
+  },"66": {
+    "doc": "Troubleshooting",
+    "title": "Debug Checklist",
+    "content": "If something isn’t working, check in order: . | Console errors — Look for [LWB] prefixed messages | DLL loading — Check for DllNotFoundException | WebView2 — Verify Edge Chromium is installed (Windows) | HTTPS — Ensure you’re using HTTPS URLs | Bridge enabled — Confirm the checkbox in Inspector | Debug overlay — Toggle with F12 to see live traffic | Remote debugger — Use Edge/Safari/Chrome DevTools | Native rebuild — Ensure Unity loaded the latest DLL | . ",
+    "url": "/lightweight-browser-support/troubleshooting/#debug-checklist",
+    
+    "relUrl": "/troubleshooting/#debug-checklist"
+  },"67": {
+    "doc": "Troubleshooting",
+    "title": "Troubleshooting",
+    "content": " ",
+    "url": "/lightweight-browser-support/troubleshooting/",
+    
+    "relUrl": "/troubleshooting/"
+  },"68": {
+    "doc": "User Guide",
+    "title": "User Guide",
+    "content": " ",
+    "url": "/lightweight-browser-support/user-guide/",
+    
+    "relUrl": "/user-guide/"
+  },"69": {
+    "doc": "User Guide",
+    "title": "Prerequisites",
+    "content": "Unity Version . | Unity Version | Status | . | Unity 6 (6000.x) | Recommended — fully tested with 6000.3.3f1 | . | Unity 2022.3 LTS | Supported (minimum) | . | Unity 2023.x | Supported | . | Unity 2021.x or earlier | Not supported | . Scripting Backend . | Backend | Status | . | IL2CPP | Recommended for all platforms | . | Mono | Supported on desktop (Windows, macOS, Linux) | . Platform Runtime Requirements . | Platform | Requirement | Pre-installed? | . | Windows 10/11 | WebView2 Runtime (Edge Chromium) | Yes — ships with Windows 10 April 2018+ and all Windows 11 | . | Android 7.0+ | Android System WebView | Yes — bundled since API 24, auto-updated via Play Store | . | iOS 14+ | WKWebView (WebKit.framework) | Yes — part of iOS | . | macOS 11+ | WKWebView (WebKit.framework) | Yes — part of macOS | . | Linux | libwebkit2gtk-4.1 + libgtk-3 | No — install via package manager | . Linux install: sudo apt install libwebkit2gtk-4.1-0 libgtk-3-0 (Ubuntu/Debian) or sudo dnf install webkit2gtk4.1 gtk3 (Fedora) . ",
+    "url": "/lightweight-browser-support/user-guide/#prerequisites",
+    
+    "relUrl": "/user-guide/#prerequisites"
+  },"70": {
+    "doc": "User Guide",
+    "title": "Installation",
+    "content": ". | Purchase and download Lightweight Browser from the Unity Asset Store | In Unity, open Window → Package Manager | Select My Assets, find Lightweight Browser, and click Import | The package will appear under Packages in your project | . ",
+    "url": "/lightweight-browser-support/user-guide/#installation",
+    
+    "relUrl": "/user-guide/#installation"
+  },"71": {
+    "doc": "User Guide",
+    "title": "Quick Start",
+    "content": "Option A: Use the Sample Scene . | After importing, go to Package Manager → Lightweight Browser → Samples | Import the Basic Browser sample | Open the imported BasicBrowserScene | Press Play | . Option B: Add to Any Scene . | Create an empty GameObject | Add the Hexora → Lightweight Browser component | Set Home URL in the Inspector (e.g. https://www.google.com) | Press Play — a fullscreen browser with auto-generated Canvas appears | . ",
+    "url": "/lightweight-browser-support/user-guide/#quick-start",
+    
+    "relUrl": "/user-guide/#quick-start"
+  },"72": {
+    "doc": "User Guide",
+    "title": "Inspector Reference",
+    "content": "LightweightBrowser Component . Browser Settings . | Field | Description | Default | . | Home URL | The URL loaded on startup and when pressing Home | https://www.google.com | . | Normalised Rect | Browser position/size. Values 0–1 are normalised (percentage of screen). Values &gt; 1 are absolute pixels. Set to (0,0,0,0) for fullscreen with auto toolbar offset. | (0, 0, 0, 0) | . Display . | Field | Description | Default | . | Display Image | Optional RawImage to render the web page into. If left empty, one is auto-created with a Canvas. | None | . | Zoom Enabled | Allow Ctrl+scroll (desktop) or pinch-to-zoom (mobile) | false | . Debugging . | Field | Description | Default | . | Debugging Enabled | Enable remote debugging (DevTools on Windows, Safari Web Inspector on Apple) | false | . | Bridge Enabled | Enable the JavaScript ↔ C# bridge system | false | . | Debug Overlay Enabled | Show the IMGUI debug overlay for bridge message inspection (requires Bridge Enabled) | false | . ScreenResizeHandler Component . Automatically detects screen resolution changes and resizes the browser to match. Add to the same GameObject as LightweightBrowser. | Field | Description | Default | . | Browser | Reference to the LightweightBrowser (auto-detected if on same GameObject) | Auto | . | Poll Interval | How often to check for resolution changes (seconds) | 0.15 | . ",
+    "url": "/lightweight-browser-support/user-guide/#inspector-reference",
+    
+    "relUrl": "/user-guide/#inspector-reference"
+  },"73": {
+    "doc": "User Guide",
+    "title": "Display Modes",
+    "content": "Texture Mode (Default) . The web page is captured as a Texture2D and displayed on a Unity RawImage. This allows: . | Unity UI elements to render on top of the browser | The browser to be part of the normal Unity UI layout | Mouse/keyboard input forwarding from Unity to the browser | . Rect Configuration . The Normalised Rect field supports two modes: . | Value Range | Mode | Example | . | 0.0 – 1.0 | Normalised — percentage of screen | (0, 0.05, 1, 0.95) = full width, 95% height with 5% top offset | . | &gt; 1 | Absolute pixels | (0, 56, 1920, 1024) = starts at Y=56px | . | (0, 0, 0, 0) | Auto fullscreen — fills screen below the toolbar (56px offset) | Default | . ",
+    "url": "/lightweight-browser-support/user-guide/#display-modes",
+    
+    "relUrl": "/user-guide/#display-modes"
+  },"74": {
+    "doc": "User Guide",
+    "title": "Navigation",
+    "content": "From Inspector / UI . The sample BasicBrowserController provides a toolbar with: . | URL bar — type a URL and press Enter or click Go | Back / Forward — browser history navigation | Reload — reload current page | Home — navigate to configured Home URL | . From C# Script . using Hexora.LightweightBrowser; public class MyScript : MonoBehaviour { [SerializeField] private LightweightBrowser _browser; void Start() { _browser.LoadUrl(\"https://unity.com\"); } void OnGUI() { var wv = _browser.WebView; if (wv != null) { GUILayout.Label($\"URL: {wv.CurrentUrl}\"); GUILayout.Label($\"Title: {wv.Title}\"); GUILayout.Label($\"Loading: {wv.IsLoading}\"); } } } . URL Changed Events . void OnEnable() { _browser.WebView.UrlChanged += OnUrlChanged; _browser.WebView.PageFinished += OnPageFinished; _browser.WebView.TitleChanged += OnTitleChanged; } void OnUrlChanged(string url) =&gt; Debug.Log($\"Navigated to: {url}\"); void OnPageFinished(string url) =&gt; Debug.Log($\"Page loaded: {url}\"); void OnTitleChanged(string title) =&gt; Debug.Log($\"Title: {title}\"); . WebView may be null during Awake(). Subscribe in Start() or check with _browser.WebView?.UrlChanged += .... ",
+    "url": "/lightweight-browser-support/user-guide/#navigation",
+    
+    "relUrl": "/user-guide/#navigation"
+  },"75": {
+    "doc": "User Guide",
+    "title": "Input Handling",
+    "content": "On desktop platforms (Windows, macOS, Linux), the plugin captures the web page as a texture and forwards input events: . | Mouse — click, move, scroll (forwarded based on RawImage position) | Keyboard — key down/up and character events (forwarded when browser has focus) | . The InputForwarder component handles this automatically. ",
+    "url": "/lightweight-browser-support/user-guide/#input-handling",
+    
+    "relUrl": "/user-guide/#input-handling"
+  },"76": {
+    "doc": "User Guide",
+    "title": "Remote Debugging",
+    "content": "Windows . | Set Debugging Enabled = true in the Inspector | Press Play | Open edge://inspect in Microsoft Edge | Your webview appears under “Other targets” | . macOS / iOS . | Set Debugging Enabled = true | Open Safari → Develop menu | Select your app → web page | . Android . | Set Debugging Enabled = true | Open chrome://inspect in Chrome | Your webview appears under “Remote Target” | . ",
+    "url": "/lightweight-browser-support/user-guide/#remote-debugging",
+    
+    "relUrl": "/user-guide/#remote-debugging"
+  },"77": {
+    "doc": "User Guide",
+    "title": "Bridge Debug Overlay",
+    "content": "When Bridge Enabled and Debug Overlay Enabled are both checked: . | Press F12 (desktop) or triple-tap (mobile) to toggle | Shows all bridge messages in real-time with colour coding: . | 🔵 Commands (C# → WebView) | 🟢 Events (WebView → C#) | 🟡 Calls (JS → C#) | 🟣 Responses | 🔴 Errors | . | Filter by text, clear buffer, copy to clipboard | . ",
+    "url": "/lightweight-browser-support/user-guide/#bridge-debug-overlay",
+    
+    "relUrl": "/user-guide/#bridge-debug-overlay"
+  },"78": {
+    "doc": "User Guide",
+    "title": "Best Practices",
+    "content": ". | One browser per scene — Only one LightweightBrowser instance is supported. | Destroy on scene unload — The native webview is destroyed in OnDestroy(). Automatic with LoadSceneMode.Single. | DontDestroyOnLoad — If you need persistence across scenes, call DontDestroyOnLoad(gameObject). | Thread safety — All IWebView methods must be called from the Unity main thread. | URL scheme — Always use https://. http:// may be blocked on Android and iOS by default. | . ",
+    "url": "/lightweight-browser-support/user-guide/#best-practices",
+    
+    "relUrl": "/user-guide/#best-practices"
+  }
+}
