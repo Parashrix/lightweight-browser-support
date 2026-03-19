@@ -128,4 +128,4 @@ body:
         - label: I searched existing issues and this hasn't been reported yet
           required: true
         - label: I'm using the latest version of the plugin
-        - label: I checked the [Troubleshooting guide](https://vertexa-company.github.io/lightweight-browser-support/troubleshooting/)
+        - label: I checked the [Troubleshooting guide](https://hexora-company.github.io/lightweight-browser-support/troubleshooting/)
